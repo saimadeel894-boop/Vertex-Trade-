@@ -8,6 +8,9 @@
   --dim: #707070;
   --blue: #1a4bc4;
   --blue-hot: #2460ef;
+  --page-pad: clamp(65px, 6.34765625vw, 96px);
+  --hero-pad: clamp(69px, 6.73828125vw, 100px);
+  --panel-width: min(calc(100% - (var(--page-pad) * 2)), 1280px);
 }
 
 @font-face {
@@ -61,7 +64,6 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  min-width: 1024px;
   background:
     radial-gradient(circle at 73% 12%, rgba(62, 62, 62, 0.2), transparent 29rem),
     radial-gradient(circle at 47% 49%, rgba(36, 36, 36, 0.18), transparent 25rem),
@@ -92,8 +94,8 @@ a:focus-visible {
 
 .page-shell {
   position: relative;
-  width: 1024px;
-  min-height: 1536px;
+  width: 100%;
+  min-height: 100vh;
   margin: 0 auto;
   overflow: hidden;
   background:
@@ -107,7 +109,7 @@ a:focus-visible {
   display: flex;
   align-items: center;
   height: 78px;
-  padding: 20px 29px 16px;
+  padding: 20px clamp(29px, 2.83vw, 48px) 16px;
 }
 
 .brand {
@@ -244,8 +246,8 @@ a:focus-visible {
 .hero-section {
   position: relative;
   z-index: 1;
-  min-height: 420px;
-  padding: 40px 0 0 69px;
+  min-height: clamp(420px, 41vw, 560px);
+  padding: 40px 0 0 var(--hero-pad);
 }
 
 .hero-copy {
@@ -360,8 +362,9 @@ a:focus-visible {
   z-index: 1;
   top: 2px;
   right: 0;
-  width: 620px;
-  height: 410px;
+  width: clamp(620px, 60.55vw, 820px);
+  aspect-ratio: 620 / 410;
+  height: auto;
   pointer-events: none;
 }
 
@@ -397,7 +400,7 @@ a:focus-visible {
 .trust-panel {
   position: relative;
   z-index: 4;
-  width: 894px;
+  width: var(--panel-width);
   height: 93px;
   margin: 1px auto 48px;
   border: 1px solid rgba(255, 255, 255, 0.24);
@@ -422,7 +425,8 @@ a:focus-visible {
 
 .trust-panel img {
   display: block;
-  width: 850px;
+  width: calc(100% - 44px);
+  max-width: 1120px;
   height: 57px;
   margin: 0 auto;
   object-fit: cover;
@@ -431,7 +435,9 @@ a:focus-visible {
 }
 
 .advantages-section {
-  padding: 0 65px;
+  width: var(--panel-width);
+  margin: 0 auto;
+  padding: 0;
 }
 
 .advantages-section h2 {
@@ -509,7 +515,7 @@ a:focus-visible {
 .market-strip {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  width: 894px;
+  width: var(--panel-width);
   height: 97px;
   margin: 42px auto 0;
   border: 1px solid rgba(255, 255, 255, 0.24);
@@ -589,9 +595,9 @@ a:focus-visible {
 .platform-section {
   position: relative;
   display: grid;
-  grid-template-columns: 440px 1fr;
+  grid-template-columns: minmax(430px, 0.96fr) minmax(390px, 1fr);
   min-height: 322px;
-  padding: 20px 65px 0;
+  padding: 20px var(--page-pad) 0;
   background:
     radial-gradient(ellipse at 19% 96%, rgba(126, 126, 126, 0.17), transparent 290px),
     radial-gradient(ellipse at 85% 96%, rgba(80, 80, 80, 0.14), transparent 260px);
@@ -616,7 +622,7 @@ a:focus-visible {
 
 .platform-art img {
   display: block;
-  width: 430px;
+  width: clamp(430px, 41.9921875vw, 520px);
   height: 286px;
   object-fit: contain;
   object-position: left top;
@@ -725,9 +731,9 @@ a:focus-visible {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: 378px 190px 260px;
+  grid-template-columns: minmax(378px, 1fr) 190px 260px;
   align-items: center;
-  width: 894px;
+  width: var(--panel-width);
   height: 109px;
   margin: 4px auto 26px;
   padding: 0 36px;
@@ -1001,14 +1007,28 @@ a:focus-visible {
 @media (max-width: 560px) {
   .site-header {
     padding-inline: 18px;
+    gap: 12px;
+  }
+
+  .brand-mark {
+    width: 31px;
+    height: 31px;
   }
 
   .brand-text span {
-    font-size: 16px;
+    font-size: 15px;
+    letter-spacing: 3px;
+  }
+
+  .brand-text small {
+    letter-spacing: 2.4px;
   }
 
   .header-actions {
+    flex: 0 0 100%;
+    order: 2;
     gap: 8px;
+    justify-content: flex-start;
   }
 
   .header-actions .btn-primary {
@@ -1020,7 +1040,18 @@ a:focus-visible {
   }
 
   .hero-actions .btn {
-    width: min(100%, 170px);
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    padding-inline: 12px;
+  }
+
+  .hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 346px;
   }
 
   .feature-strip {
