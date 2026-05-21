@@ -22,10 +22,10 @@ export function Header() {
       </nav>
 
       <div className="header-actions">
-        <a className="btn btn-ghost" href="#get-started">
+        <a className="btn btn-ghost" href="/signin">
           Login
         </a>
-        <a className="btn btn-primary" href="#get-started">
+        <a className="btn btn-primary" href="/signup">
           Get Started
         </a>
       </div>
