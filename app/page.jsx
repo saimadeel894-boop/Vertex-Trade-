@@ -1,5 +1,6 @@
 import { Advantages } from "@/components/Advantages";
 import { ClosingCta } from "@/components/ClosingCta";
+import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { MarketStrip } from "@/components/MarketStrip";
@@ -16,6 +17,7 @@ export default function HomePage() {
       <MarketStrip />
       <Platforms />
       <ClosingCta />
+      <Footer />
     </main>
   );
 }
