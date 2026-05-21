@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 
 type AuthMode = "signin" | "signup";
 type AuthErrors = Partial<Record<"name" | "email" | "password" | "confirm", boolean>>;
@@ -113,7 +114,7 @@ function getStrength(password: string) {
   ][score];
 }
 
-export function AuthPage({ mode }: { mode: AuthMode }) {
+export function AuthPage({ mode, background }: { mode: AuthMode; background?: ReactNode }) {
   const isSignup = mode === "signup";
   const [values, setValues] = useState({
     name: "",
@@ -166,10 +167,9 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
 
   return (
     <main className="auth-page-shell">
-      <div className="auth-bg" />
-      <div className="auth-bg-grid" />
+      {background}
 
-      <div className="auth-page">
+      <div className="auth-page auth-form-panel">
         <nav className="auth-navbar">
           <VertexLogo />
         </nav>

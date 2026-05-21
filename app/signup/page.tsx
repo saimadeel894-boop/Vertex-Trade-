@@ -1,3 +1,4 @@
+import { AuthBackground } from "@/components/AuthBackground";
 import { AuthPage } from "@/components/AuthPage";
 
 export const metadata = {
@@ -6,5 +7,5 @@ export const metadata = {
 };
 
 export default function SignUpPage() {
-  return <AuthPage mode="signup" />;
+  return <AuthPage mode="signup" background={<AuthBackground />} />;
 }
