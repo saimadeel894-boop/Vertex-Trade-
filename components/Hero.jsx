@@ -87,14 +87,7 @@ export function Hero() {
       </div>
 
       <div className="hero-visual" aria-hidden="true">
-        <img
-          src="/assets/hero-bull-panel.jpg"
-          alt=""
-          width="620"
-          height="410"
-          fetchPriority="high"
-          style={{ animation: "bullRotate 8s ease-in-out infinite" }}
-        />
+        <img src="/assets/hero-bull-panel.jpg" alt="" width="620" height="410" fetchPriority="high" />
       </div>
     </section>
   );

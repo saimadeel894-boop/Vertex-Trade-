@@ -1944,21 +1944,6 @@ a:focus-visible {
   text-align: right;
 }
 
-@keyframes bullRotate {
-  0%,
-  100% {
-    transform: translateX(-50%) translateY(0) rotateY(0deg);
-  }
-
-  25% {
-    transform: translateX(-50%) translateY(-8px) rotateY(3deg);
-  }
-
-  75% {
-    transform: translateX(-50%) translateY(-4px) rotateY(-3deg);
-  }
-}
-
 @media (max-width: 900px) {
   .footer-top-row,
   .footer-bottom-row {
