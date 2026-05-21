@@ -1796,6 +1796,83 @@ a:focus-visible {
   text-align: center;
 }
 
+.auth-status-message.success {
+  color: #22c55e;
+}
+
+.auth-status-message.error {
+  color: #ef4444;
+}
+
+.auth-otp-panel {
+  animation: authFadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-otp-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 18px;
+  border: 1px solid rgba(37, 99, 235, 0.26);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.2), transparent 72%),
+    rgba(37, 99, 235, 0.08);
+  color: #dbe7ff;
+  box-shadow: 0 16px 42px rgba(37, 99, 235, 0.16);
+}
+
+.auth-otp-copy {
+  margin: 0 0 22px;
+  color: #a0aab8;
+  font-size: 13px;
+  line-height: 1.65;
+  text-align: center;
+}
+
+.auth-otp-copy strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.auth-otp-input {
+  text-align: center;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.42em;
+}
+
+.auth-otp-input::placeholder {
+  color: rgba(107, 117, 133, 0.45);
+}
+
+.auth-otp-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.auth-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  font: 500 12px Inter, Arial, sans-serif;
+  transition: color 0.2s, opacity 0.2s;
+}
+
+.auth-link-button:hover {
+  color: #60a5fa;
+}
+
+.auth-link-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .auth-btn-submit {
   position: relative;
   width: 100%;
@@ -2008,6 +2085,17 @@ a:focus-visible {
 
   .auth-social-btns {
     flex-direction: column;
+  }
+
+  .auth-otp-actions {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .auth-otp-input {
+    font-size: 19px;
+    letter-spacing: 0.32em;
   }
 }
 

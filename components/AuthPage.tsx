@@ -5,6 +5,16 @@ import type { ReactNode } from "react";
 
 type AuthMode = "signin" | "signup";
 type AuthErrors = Partial<Record<"name" | "email" | "password" | "confirm", boolean>>;
+type StatusTone = "neutral" | "success" | "error";
+type SignupStep = "form" | "otp";
+
+type AuthApiResponse = {
+  ok?: boolean;
+  error?: string;
+  verificationToken?: string;
+  maskedEmail?: string;
+  redirectTo?: string;
+};
 
 function VertexLogo() {
   return (
@@ -83,6 +93,18 @@ function EyeIcon({ hidden }: { hidden: boolean }) {
   );
 }
 
+function OtpIcon() {
+  return (
+    <div className="auth-otp-icon" aria-hidden="true">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+        <path d="M4 6.5h16v11H4z" />
+        <path d="m4.5 7 7.5 6 7.5-6" />
+        <path d="M8 16h8" />
+      </svg>
+    </div>
+  );
+}
+
 function SecurityBadge() {
   return (
     <div className="auth-security-badge">
@@ -114,6 +136,21 @@ function getStrength(password: string) {
   ][score];
 }
 
+async function readAuthResponse(response: Response) {
+  let data: AuthApiResponse = {};
+  try {
+    data = (await response.json()) as AuthApiResponse;
+  } catch {
+    data = {};
+  }
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || "Something went wrong. Please try again.");
+  }
+
+  return data;
+}
+
 export function AuthPage({ mode, background }: { mode: AuthMode; background?: ReactNode }) {
   const isSignup = mode === "signup";
   const [values, setValues] = useState({
@@ -126,20 +163,30 @@ export function AuthPage({ mode, background }: { mode: AuthMode; background?: Re
   });
   const [errors, setErrors] = useState<AuthErrors>({});
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<StatusTone>("neutral");
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState<Record<string, boolean>>({});
+  const [signupStep, setSignupStep] = useState<SignupStep>("form");
+  const [verificationToken, setVerificationToken] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
 
   const strength = useMemo(() => getStrength(values.password), [values.password]);
+  const isOtpStep = isSignup && signupStep === "otp";
+
+  const setStatus = (nextMessage: string, tone: StatusTone = "neutral") => {
+    setMessage(nextMessage);
+    setMessageTone(tone);
+  };
 
   const updateValue = (key: keyof typeof values, value: string | boolean) => {
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: false }));
-    if (message) setMessage("");
+    if (message) setStatus("");
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const validateForm = () => {
     const nextErrors: AuthErrors = {};
     if (isSignup && !values.name.trim()) nextErrors.name = true;
     if (!isEmail(values.email.trim())) nextErrors.email = true;
@@ -148,22 +195,110 @@ export function AuthPage({ mode, background }: { mode: AuthMode; background?: Re
 
     setErrors(nextErrors);
     if (isSignup && (!values.terms || !values.age)) {
-      setMessage("Please agree to all required terms.");
+      setStatus("Please agree to all required terms.", "error");
     }
 
-    if (Object.keys(nextErrors).length || (isSignup && (!values.terms || !values.age))) return;
+    return !Object.keys(nextErrors).length && (!isSignup || (values.terms && values.age));
+  };
+
+  const requestSignupOtp = async ({ resend = false }: { resend?: boolean } = {}) => {
+    if (!validateForm()) return;
+
+    if (resend) {
+      setResending(true);
+    } else {
+      setSubmitting(true);
+    }
+    setStatus(resend ? "Sending a new verification code..." : "Sending verification code...", "neutral");
+
+    try {
+      const response = await fetch("/api/auth/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: values.name,
+          email: values.email,
+          password: values.password,
+          confirm: values.confirm,
+          terms: values.terms,
+          age: values.age
+        })
+      });
+      const data = await readAuthResponse(response);
+
+      setVerificationToken(data.verificationToken || "");
+      setMaskedEmail(data.maskedEmail || values.email);
+      setOtpCode("");
+      setSignupStep("otp");
+      setStatus(`Verification code sent to ${data.maskedEmail || values.email}.`, "success");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Unable to send verification code.", "error");
+    } finally {
+      if (resend) {
+        setResending(false);
+      } else {
+        setSubmitting(false);
+      }
+    }
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (isSignup) {
+      await requestSignupOtp();
+      return;
+    }
+
+    if (!validateForm()) return;
 
     setSubmitting(true);
-    setMessage(isSignup ? "Creating account..." : "Signing in...");
+    setStatus("Signing in...", "neutral");
     window.setTimeout(() => {
-      setMessage(isSignup ? "Account created! Redirecting..." : "Success! Redirecting...");
+      setStatus("Success! Redirecting...", "success");
       window.setTimeout(() => {
         window.location.href = "/";
       }, 1200);
-    }, isSignup ? 1400 : 1200);
+    }, 1200);
+  };
+
+  const handleVerifyOtp = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const code = otpCode.replace(/\D/g, "");
+    if (code.length !== 6) {
+      setStatus("Enter the 6-digit verification code.", "error");
+      return;
+    }
+
+    setSubmitting(true);
+    setStatus("Verifying code...", "neutral");
+
+    try {
+      const response = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, verificationToken })
+      });
+      const data = await readAuthResponse(response);
+
+      setStatus("Email verified. Redirecting...", "success");
+      window.setTimeout(() => {
+        window.location.href = data.redirectTo || "/";
+      }, 900);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Verification failed.", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputType = (key: string) => (passwordVisible[key] ? "text" : "password");
+  const title = isOtpStep ? "Verify your email" : isSignup ? "Create your account" : "Welcome back";
+  const subtitle = isOtpStep
+    ? "Enter the code sent to your email to activate your account"
+    : isSignup
+      ? "Join thousands of traders on Vertex Markets"
+      : "Sign in to your Vertex Markets account";
 
   return (
     <main className="auth-page-shell">
@@ -177,170 +312,237 @@ export function AuthPage({ mode, background }: { mode: AuthMode; background?: Re
         <div className="auth-wrap">
           <section className="auth-card" aria-labelledby="auth-title">
             <h1 className="auth-title" id="auth-title">
-              {isSignup ? "Create your account" : "Welcome back"}
+              {title}
             </h1>
-            <p className="auth-sub">
-              {isSignup ? "Join thousands of traders on Vertex Markets" : "Sign in to your Vertex Markets account"}
-            </p>
+            <p className="auth-sub">{subtitle}</p>
 
-            <div className="auth-social-btns">
-              <button className="auth-btn-social" type="button">
-                <GoogleIcon />
-                Google
-              </button>
-              <button className="auth-btn-social" type="button">
-                <FacebookIcon />
-                Facebook
-              </button>
-            </div>
-
-            <div className="auth-divider">
-              <span className="auth-divider-text">{isSignup ? "or create with email" : "or sign in with email"}</span>
-            </div>
-
-            <form onSubmit={handleSubmit} noValidate>
-              {isSignup ? (
-                <div className="auth-form-group">
-                  <label className="auth-form-label" htmlFor="signup-name">
-                    Full Name
-                  </label>
-                  <input
-                    className={`auth-form-input${errors.name ? " error" : ""}`}
-                    id="signup-name"
-                    autoComplete="name"
-                    placeholder="John Smith"
-                    value={values.name}
-                    onChange={(event) => updateValue("name", event.target.value)}
-                    type="text"
-                  />
-                  <div className="auth-form-error">Please enter your full name.</div>
-                </div>
-              ) : null}
-
-              <div className="auth-form-group">
-                <label className="auth-form-label" htmlFor={`${mode}-email`}>
-                  Email address
-                </label>
-                <input
-                  className={`auth-form-input${errors.email ? " error" : ""}`}
-                  id={`${mode}-email`}
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={values.email}
-                  onChange={(event) => updateValue("email", event.target.value)}
-                  type="email"
-                />
-                <div className="auth-form-error">Please enter a valid email address.</div>
-              </div>
-
-              <div className="auth-form-group">
-                <label className="auth-form-label" htmlFor={`${mode}-password`}>
-                  Password
-                </label>
-                <div className="auth-input-wrap">
-                  <input
-                    className={`auth-form-input${errors.password ? " error" : ""}`}
-                    id={`${mode}-password`}
-                    autoComplete={isSignup ? "new-password" : "current-password"}
-                    placeholder={isSignup ? "Create a strong password" : "Enter your password"}
-                    value={values.password}
-                    onChange={(event) => updateValue("password", event.target.value)}
-                    type={inputType("password")}
-                  />
-                  <button
-                    className="auth-pw-toggle"
-                    type="button"
-                    aria-label={passwordVisible.password ? "Hide password" : "Show password"}
-                    onClick={() => setPasswordVisible((current) => ({ ...current, password: !current.password }))}
-                  >
-                    <EyeIcon hidden={!passwordVisible.password} />
+            {!isOtpStep ? (
+              <>
+                <div className="auth-social-btns">
+                  <button className="auth-btn-social" type="button">
+                    <GoogleIcon />
+                    Google
+                  </button>
+                  <button className="auth-btn-social" type="button">
+                    <FacebookIcon />
+                    Facebook
                   </button>
                 </div>
+
+                <div className="auth-divider">
+                  <span className="auth-divider-text">{isSignup ? "or create with email" : "or sign in with email"}</span>
+                </div>
+              </>
+            ) : null}
+
+            {isOtpStep ? (
+              <form className="auth-otp-panel" onSubmit={handleVerifyOtp} noValidate>
+                <OtpIcon />
+                <p className="auth-otp-copy">
+                  We sent a secure 6-digit verification code to <strong>{maskedEmail || values.email}</strong>.
+                </p>
+
+                <div className="auth-form-group">
+                  <label className="auth-form-label" htmlFor="signup-otp">
+                    Verification code
+                  </label>
+                  <input
+                    className="auth-form-input auth-otp-input"
+                    id="signup-otp"
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={otpCode}
+                    onChange={(event) => {
+                      setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6));
+                      if (message) setStatus("");
+                    }}
+                    type="text"
+                  />
+                </div>
+
+                {message ? (
+                  <p className={`auth-status-message ${messageTone}`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">
+                    {message}
+                  </p>
+                ) : null}
+
+                <button className="auth-btn-submit" type="submit" disabled={submitting || !verificationToken}>
+                  {submitting ? "Verifying..." : "Verify Email"}
+                </button>
+
+                <div className="auth-otp-actions">
+                  <button
+                    className="auth-link-button"
+                    type="button"
+                    disabled={resending || submitting}
+                    onClick={() => requestSignupOtp({ resend: true })}
+                  >
+                    {resending ? "Sending..." : "Resend code"}
+                  </button>
+                  <button
+                    className="auth-link-button"
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => {
+                      setSignupStep("form");
+                      setStatus("");
+                    }}
+                  >
+                    Edit email
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} noValidate>
                 {isSignup ? (
-                  <div className="auth-pw-strength">
-                    <div className="auth-pw-strength-bar">
-                      <div
-                        className="auth-pw-strength-fill"
-                        style={{ width: strength.width, background: strength.color }}
-                      />
-                    </div>
-                    <span className="auth-pw-strength-text" style={{ color: strength.color }}>
-                      {strength.label}
-                    </span>
+                  <div className="auth-form-group">
+                    <label className="auth-form-label" htmlFor="signup-name">
+                      Full Name
+                    </label>
+                    <input
+                      className={`auth-form-input${errors.name ? " error" : ""}`}
+                      id="signup-name"
+                      autoComplete="name"
+                      placeholder="John Smith"
+                      value={values.name}
+                      onChange={(event) => updateValue("name", event.target.value)}
+                      type="text"
+                    />
+                    <div className="auth-form-error">Please enter your full name.</div>
                   </div>
                 ) : null}
-                <div className="auth-form-error">
-                  {isSignup ? "Password must be at least 8 characters." : "Password is required."}
-                </div>
-              </div>
 
-              {isSignup ? (
                 <div className="auth-form-group">
-                  <label className="auth-form-label" htmlFor="signup-confirm">
-                    Confirm Password
+                  <label className="auth-form-label" htmlFor={`${mode}-email`}>
+                    Email address
+                  </label>
+                  <input
+                    className={`auth-form-input${errors.email ? " error" : ""}`}
+                    id={`${mode}-email`}
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    value={values.email}
+                    onChange={(event) => updateValue("email", event.target.value)}
+                    type="email"
+                  />
+                  <div className="auth-form-error">Please enter a valid email address.</div>
+                </div>
+
+                <div className="auth-form-group">
+                  <label className="auth-form-label" htmlFor={`${mode}-password`}>
+                    Password
                   </label>
                   <div className="auth-input-wrap">
                     <input
-                      className={`auth-form-input${errors.confirm ? " error" : ""}`}
-                      id="signup-confirm"
-                      autoComplete="new-password"
-                      placeholder="Repeat your password"
-                      value={values.confirm}
-                      onChange={(event) => updateValue("confirm", event.target.value)}
-                      type={inputType("confirm")}
+                      className={`auth-form-input${errors.password ? " error" : ""}`}
+                      id={`${mode}-password`}
+                      autoComplete={isSignup ? "new-password" : "current-password"}
+                      placeholder={isSignup ? "Create a strong password" : "Enter your password"}
+                      value={values.password}
+                      onChange={(event) => updateValue("password", event.target.value)}
+                      type={inputType("password")}
                     />
                     <button
                       className="auth-pw-toggle"
                       type="button"
-                      aria-label={passwordVisible.confirm ? "Hide password" : "Show password"}
-                      onClick={() => setPasswordVisible((current) => ({ ...current, confirm: !current.confirm }))}
+                      aria-label={passwordVisible.password ? "Hide password" : "Show password"}
+                      onClick={() => setPasswordVisible((current) => ({ ...current, password: !current.password }))}
                     >
-                      <EyeIcon hidden={!passwordVisible.confirm} />
+                      <EyeIcon hidden={!passwordVisible.password} />
                     </button>
                   </div>
-                  <div className="auth-form-error">Passwords do not match.</div>
-                </div>
-              ) : (
-                <div className="auth-forgot">
-                  <a href="#">Forgot password?</a>
-                </div>
-              )}
-
-              {isSignup ? (
-                <>
-                  <div className="auth-checkbox-group">
-                    <input
-                      className="auth-form-checkbox"
-                      id="agreeTerms"
-                      checked={values.terms}
-                      onChange={(event) => updateValue("terms", event.target.checked)}
-                      type="checkbox"
-                    />
-                    <label className="auth-checkbox-label" htmlFor="agreeTerms">
-                      I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
-                    </label>
+                  {isSignup ? (
+                    <div className="auth-pw-strength">
+                      <div className="auth-pw-strength-bar">
+                        <div
+                          className="auth-pw-strength-fill"
+                          style={{ width: strength.width, background: strength.color }}
+                        />
+                      </div>
+                      <span className="auth-pw-strength-text" style={{ color: strength.color }}>
+                        {strength.label}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="auth-form-error">
+                    {isSignup ? "Password must be at least 8 characters." : "Password is required."}
                   </div>
-                  <div className="auth-checkbox-group">
-                    <input
-                      className="auth-form-checkbox"
-                      id="agreeAge"
-                      checked={values.age}
-                      onChange={(event) => updateValue("age", event.target.checked)}
-                      type="checkbox"
-                    />
-                    <label className="auth-checkbox-label" htmlFor="agreeAge">
-                      I confirm I am 18 years of age or older
+                </div>
+
+                {isSignup ? (
+                  <div className="auth-form-group">
+                    <label className="auth-form-label" htmlFor="signup-confirm">
+                      Confirm Password
                     </label>
+                    <div className="auth-input-wrap">
+                      <input
+                        className={`auth-form-input${errors.confirm ? " error" : ""}`}
+                        id="signup-confirm"
+                        autoComplete="new-password"
+                        placeholder="Repeat your password"
+                        value={values.confirm}
+                        onChange={(event) => updateValue("confirm", event.target.value)}
+                        type={inputType("confirm")}
+                      />
+                      <button
+                        className="auth-pw-toggle"
+                        type="button"
+                        aria-label={passwordVisible.confirm ? "Hide password" : "Show password"}
+                        onClick={() => setPasswordVisible((current) => ({ ...current, confirm: !current.confirm }))}
+                      >
+                        <EyeIcon hidden={!passwordVisible.confirm} />
+                      </button>
+                    </div>
+                    <div className="auth-form-error">Passwords do not match.</div>
                   </div>
-                </>
-              ) : null}
+                ) : (
+                  <div className="auth-forgot">
+                    <a href="#">Forgot password?</a>
+                  </div>
+                )}
 
-              {message ? <p className="auth-status-message">{message}</p> : null}
+                {isSignup ? (
+                  <>
+                    <div className="auth-checkbox-group">
+                      <input
+                        className="auth-form-checkbox"
+                        id="agreeTerms"
+                        checked={values.terms}
+                        onChange={(event) => updateValue("terms", event.target.checked)}
+                        type="checkbox"
+                      />
+                      <label className="auth-checkbox-label" htmlFor="agreeTerms">
+                        I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                      </label>
+                    </div>
+                    <div className="auth-checkbox-group">
+                      <input
+                        className="auth-form-checkbox"
+                        id="agreeAge"
+                        checked={values.age}
+                        onChange={(event) => updateValue("age", event.target.checked)}
+                        type="checkbox"
+                      />
+                      <label className="auth-checkbox-label" htmlFor="agreeAge">
+                        I confirm I am 18 years of age or older
+                      </label>
+                    </div>
+                  </>
+                ) : null}
 
-              <button className="auth-btn-submit" type="submit" disabled={submitting}>
-                {submitting ? (isSignup ? "Creating account..." : "Signing in...") : isSignup ? "Create Account" : "Sign In"}
-              </button>
-            </form>
+                {message ? (
+                  <p className={`auth-status-message ${messageTone}`} role={messageTone === "error" ? "alert" : "status"} aria-live="polite">
+                    {message}
+                  </p>
+                ) : null}
+
+                <button className="auth-btn-submit" type="submit" disabled={submitting}>
+                  {submitting ? (isSignup ? "Sending code..." : "Signing in...") : isSignup ? "Create Account" : "Sign In"}
+                </button>
+              </form>
+            )}
 
             <SecurityBadge />
 
@@ -349,7 +551,7 @@ export function AuthPage({ mode, background }: { mode: AuthMode; background?: Re
               <a href={isSignup ? "/signin" : "/signup"}>{isSignup ? "Sign in" : "Create account"}</a>
             </p>
 
-            {isSignup ? (
+            {isSignup && !isOtpStep ? (
               <p className="auth-terms-text">
                 By creating an account, you agree to Vertex Markets account security and compliance checks.
               </p>
