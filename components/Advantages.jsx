@@ -1,3 +1,5 @@
+import { CardTilt } from "@/components/CardTilt";
+
 const advantages = [
   {
     image: "/assets/adv-liquidity.jpg",
@@ -48,13 +50,23 @@ const advantages = [
 export function Advantages() {
   return (
     <section className="advantages-section" id="advantages" aria-labelledby="advantages-title">
+      <CardTilt />
       <h2 id="advantages-title">
         Advantages Built for <strong>Serious Traders</strong>
       </h2>
 
       <div className="advantage-grid">
         {advantages.map((advantage) => (
-          <article className="advantage-card" key={advantage.image}>
+          <article
+            className="advantage-card adv-card"
+            data-tilt
+            data-tilt-max="8"
+            data-tilt-speed="400"
+            data-tilt-glare="true"
+            data-tilt-max-glare="0.1"
+            data-tilt-perspective="1000"
+            key={advantage.image}
+          >
             <img src={advantage.image} alt="" width="171" height="126" loading="lazy" />
             <h3>{advantage.title}</h3>
             <p>{advantage.copy}</p>

@@ -1,3 +1,6 @@
+import { HeroDepthEffects } from "@/components/HeroDepthEffects";
+import { ParticleField } from "@/components/ParticleField";
+
 function ArrowIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -13,6 +16,8 @@ function FeatureIcon({ children }) {
 export function Hero() {
   return (
     <section className="hero-section" id="trading" aria-labelledby="hero-title">
+      <ParticleField />
+      <HeroDepthEffects />
       <div className="hero-copy">
         <h1 id="hero-title">
           Trade Smarter.

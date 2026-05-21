@@ -268,6 +268,19 @@ a:focus-visible {
   align-items: center;
 }
 
+.particle-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transform: translateY(var(--scroll-depth-y, 0));
+}
+
+.particle-field canvas {
+  width: 100%;
+  height: 100%;
+}
+
 .hero-copy {
   position: relative;
   z-index: 3;
@@ -336,6 +349,8 @@ a:focus-visible {
 .feature-strip li {
   min-width: 0;
   color: #fff;
+  transform: translateY(var(--chip-depth-y, 0));
+  transition: transform 120ms linear;
 }
 
 .feature-icon {
@@ -378,7 +393,8 @@ a:focus-visible {
   position: absolute;
   z-index: 1;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(calc(-50% + var(--scroll-depth-y, 0px))) perspective(1000px) rotateY(-3deg) rotateX(2deg);
+  transform-style: preserve-3d;
   right: 0;
   width: clamp(680px, 52vw, 920px);
   aspect-ratio: 620 / 410;
@@ -594,7 +610,8 @@ a:focus-visible {
   color: #c2c2c2;
 }
 
-.market-strip svg {
+.market-strip svg,
+.ticker-candles {
   position: absolute;
   left: 24px;
   right: 24px;
@@ -941,6 +958,7 @@ a:focus-visible {
     position: relative;
     top: auto;
     right: auto;
+    transform: translateY(var(--scroll-depth-y, 0px)) perspective(1000px) rotateY(-3deg) rotateX(2deg);
     width: 100%;
     height: auto;
     max-height: 380px;

@@ -1,3 +1,5 @@
+import { AnimatedCandles } from "@/components/AnimatedCandles";
+
 const markets = [
   {
     symbol: "EURUSD",
@@ -49,9 +51,7 @@ export function MarketStrip() {
             <span>{market.value}</span>
           </div>
           <em>{market.change}</em>
-          <svg viewBox="0 0 118 38" aria-hidden="true">
-            <polyline points={market.points} />
-          </svg>
+          <AnimatedCandles points={market.points} neutral={market.neutral} />
         </article>
       ))}
     </section>
